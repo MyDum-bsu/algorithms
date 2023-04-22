@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <map>
+#include <algorithm>
 
 class Trie {
 public:
@@ -11,7 +11,7 @@ public:
         int string_index = -1;
         Node *suffix_link = nullptr;
         Node *closest_terminal = nullptr;
-        std::map<char, Node *> next;
+        Node *next[52] = {};
         Node *parent = nullptr;
 
         bool IsRoot() const {
@@ -30,7 +30,8 @@ public:
     void Add(const std::string &string, int index) {
         auto current_node = root_;
         for (auto c: string) {
-            auto &next_node = current_node->next[c];
+            int idx = c - (std::isupper(c) ? 'A' - 26 : 'a');
+            auto &next_node = current_node->next[idx];
             if (next_node == nullptr) {
                 next_node = new Node();
                 nodes_.push_back(next_node);
@@ -45,7 +46,8 @@ public:
     }
 
     Node *Go(Node *vertex, char c) {
-        auto &next_node = vertex->next[c];
+        int idx = c - (std::isupper(c) ? 'A' - 26 : 'a');
+        auto &next_node = vertex->next[idx];
         if (next_node == nullptr) {
             if (vertex == root_) {
                 next_node = root_;
@@ -91,15 +93,38 @@ private:
     Node *root_;
 };
 
-bool IsSubstring(std::string& str1, std::string& str2) {
-    if (str1.size() > str2.size()) {
-        swap(str1, str2);
+bool IsSubstring(std::string &s, std::string &pattern) {
+    int n = s.size();
+    int m = pattern.size();
+
+    std::vector<int> pi(m);
+
+    for (int i = 1, j = 0; i < m; i++) {
+        while (j > 0 && pattern[i] != pattern[j]) {
+            j = pi[j - 1];
+        }
+
+        if (pattern[i] == pattern[j]) {
+            j++;
+        }
+
+        pi[i] = j;
     }
-    for (int i = 0; i < (int)(str2.size() - str1.size() + 1); i++) {
-        if (str2.substr(i, str1.size()) == str1) {
+
+    for (int i = 0, j = 0; i < n; i++) {
+        while (j > 0 && s[i] != pattern[j]) {
+            j = pi[j - 1];
+        }
+
+        if (s[i] == pattern[j]) {
+            j++;
+        }
+
+        if (j == m) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -108,27 +133,13 @@ int main() {
     int n;
     std::ios_base::sync_with_stdio(false);
     std::cin >> n;
-    if (n == 1) {
-        std::cout << "NO";
-        return 0;
-    }
-    if (n == 2) {
-        std::string s1, s2;
-        std::cin >> s1;
-        std::cin >> s2;
-        if (s1.find(s2) != std::string::npos || s2.find(s1) != std::string::npos) {
-            std::cout << "YES";
-        } else {
-            std::cout << "NO";
-        }
-        return 0;
-    }
-
     std::vector<std::string> strings(n);
     for (int i = 0; i < n; i++) {
         std::cin >> strings[i];
     }
-
+    std::sort(strings.begin(), strings.end(), [](const std::string &a, const std::string &b) {
+        return a.length() > b.length();
+    });
     if (n <= 1e3) {
         for (int i = 0; i < n; i++) {
             for (int j = i + 1; j < n; j++) {
@@ -147,7 +158,6 @@ int main() {
     for (int word_index = 0; word_index < strings.size(); word_index++) {
         auto &word = strings[word_index];
         auto v = trie.GetRoot();
-
         for (char i: word) {
             v = trie.Go(v, i);
             if (v->string_index == word_index) {
